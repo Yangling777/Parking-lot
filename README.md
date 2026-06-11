@@ -56,7 +56,9 @@ flowchart LR
 
 ## 演示视频
 
-🎬 **[点击观看系统演示](media/demo.mp4)**（9.3 MB，右键另存或直接点击播放）
+<p align="center">
+  <img src="media/demo.gif" width="80%" alt="系统演示">
+</p>
 
 > 视频展示了车牌识别、车位管理、闸机控制、计费结算等核心功能全流程
 
