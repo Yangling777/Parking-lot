@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>道闸监控终端 - 智能停车场</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1c1c1e;
+            font-family: -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+        }
+
+        .pc-simulator {
+            width: 414px;
+            height: 850px;
+            background: #2c2c2e;
+            margin: 30px 0;
+            border-radius: 55px;
+            border: 14px solid #48484a;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .pc-simulator::before {
+            content: '';
+            position: sticky;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 1000;
+            display: block;
+            margin-bottom: 15px;
+        }
+
+        .header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid #3a3a3c;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .panel {
+            background: #3a3a3c;
+            margin: 0 20px 20px;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #48484a;
+        }
+
+        .el-tabs__nav-wrap::after {
+            background-color: #3a3a3c;
+        }
+
+        .el-tabs__item {
+            color: #8e8e93;
+            font-weight: bold;
+        }
+
+        .el-tabs__item.is-active {
+            color: #0a84ff;
+        }
+
+        .el-input__inner {
+            background-color: #1c1c1e !important;
+            color: #fff !important;
+            border-color: #48484a !important;
+        }
+
+        /* 独立收款码弹窗样式 */
+        .sim-qr-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(28, 28, 30, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            border-radius: 40px;
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div id="app" class="pc-simulator" v-cloak>
+    {% raw %}
+    <div class="header">
+        <h1>📸 道闸测控终端</h1>
+        <a @click="logout"
+           style="color: #ff453a; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold;">断开连接</a>
+    </div>
+
+    <el-tabs v-model="activeTab" stretch>
+
+        <el-tab-pane label="车辆抓拍" name="entry">
+            <div class="panel" style="border-left: 4px solid #0a84ff;">
+                <h3 style="margin: 0 0 15px 0; font-size: 15px; color: #0a84ff;">第 1 步：生成探头数据</h3>
+                <div style="display: flex; gap: 8px; margin-bottom: 25px;">
+                    <el-input v-model="simPlate" placeholder="生成或手动录入车牌" size="medium"></el-input>
+                    <el-button type="primary" size="medium" @click="generateRandomPlate"
+                               style="background:#0a84ff; border:none;">随机
+                    </el-button>
+                </div>
+
+                <h3 style="margin: 0 0 15px 0; font-size: 15px; color: #ff9f0a;">第 2 步：触发入场道闸</h3>
+                <div style="display: flex; gap: 10px;">
+                    <el-select v-model="selectedDemoSlot" placeholder="分配车位" size="medium" style="flex: 1;">
+                        <el-option v-for="s in freeSlots" :key="s.id" :label="s.slot_number"
+                                   :value="s.slot_number"></el-option>
+                    </el-select>
+                    <el-button type="warning" size="medium" style="background:#ff9f0a; border:none; font-weight:bold;"
+                               @click="btnSimulateEntry">抬杆入场
+                    </el-button>
+                </div>
+            </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="停车模拟" name="parking">
+            <div class="panel" style="border-left: 4px solid #ff453a;">
+                <h3 style="margin: 0 0 15px 0; font-size: 15px; color: #fff;">1. 锁定在停车辆</h3>
+                <el-select v-model="selectedExitSlot" placeholder="选择出场车辆" size="medium"
+                           style="width: 100%; margin-bottom: 20px;">
+                    <el-option v-for="s in occupiedSlots" :key="s.id" :label="s.slot + ' (' + s.plate + ')'"
+                               :value="s.slot"></el-option>
+                </el-select>
+
+                <div style="margin-bottom: 20px; padding: 12px; background: #2c2c2e; border-radius: 8px; border: 1px solid #48484a;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #8e8e93; margin-bottom: 5px;">
+                        <span>2. 篡改停车时空</span>
+                        <span style="color: #ff453a; font-weight: bold;">停放 {{ simDuration }} 小时</span>
+                    </div>
+                    <el-slider v-model="simDuration" :min="0.1" :max="24" :step="0.1"></el-slider>
+                    <el-button type="primary" size="small"
+                               style="width: 100%; margin-top: 10px; background: #0a84ff; border: none;"
+                               @click="btnSyncDuration">写入底层数据库
+                    </el-button>
+                </div>
+
+                <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #fff;">3. 触发地锁</h3>
+                <el-button type="danger" size="medium"
+                           style="width: 100%; background:#ff453a; border:none; font-weight:bold; height:44px; font-size: 15px;"
+                           @click="btnSimulateExit">抓拍离场结算
+                </el-button>
+            </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="充电模拟" name="charging">
+            <div class="panel" style="border-left: 4px solid #32d74b;">
+                <h3 style="margin: 0 0 15px 0; font-size: 15px; color: #fff;">1. 选择新能源泊位</h3>
+                <el-select v-model="selectedChargeSlot" placeholder="请选择已停车的充电桩" size="medium"
+                           style="width: 100%; margin-bottom: 20px;">
+                    <el-option v-for="s in chargeableParkedSlots" :key="s.id" :label="s.slot + ' (' + s.plate + ')'"
+                               :value="s.slot"></el-option>
+                </el-select>
+
+                <div v-if="selectedChargeSlot">
+                    <div v-if="!isSlotCharging(selectedChargeSlot)" style="text-align: center; padding: 20px 0;">
+                        <i class="el-icon-lightning" style="font-size: 40px; color: #8e8e93; margin-bottom: 10px;"></i>
+                        <br>
+                        <el-button type="success"
+                                   style="width: 100%; background:#32d74b; border:none; font-weight:bold; font-size: 15px; height:44px;"
+                                   @click="btnStartCharge">🔌 物理插枪，开始通电
+                        </el-button>
+                    </div>
+
+                    <div v-else>
+                        <div style="margin-bottom: 20px; padding: 12px; background: #2c2c2e; border-radius: 8px; border: 1px solid #48484a;">
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #8e8e93; margin-bottom: 5px;">
+                                <span style="color: #32d74b;">⚡ 正在充电中，模拟供电时长</span>
+                                <span style="color: #32d74b; font-weight: bold;">通电 {{ chargeDuration }} 小时</span>
+                            </div>
+                            <el-slider v-model="chargeDuration" :min="0.1" :max="12" :step="0.1"></el-slider>
+                            <el-button type="primary" size="small"
+                                       style="width: 100%; margin-top: 10px; background: #32d74b; color: #000; border: none;"
+                                       @click="btnSyncChargeDuration">同步通电时间
+                            </el-button>
+                        </div>
+                        <el-button type="danger" size="medium"
+                                   style="width: 100%; font-weight:bold; height:44px; font-size: 15px;"
+                                   @click="btnStopCharge">拔枪断电，结算电费
+                        </el-button>
+                    </div>
+                </div>
+            </div>
+        </el-tab-pane>
+    </el-tabs>
+
+    <div class="sim-qr-overlay" v-if="simPayVisible">
+        <h2 style="margin: 0; color: #fff; font-size: 20px;">停车离场：{{ simExitData.plate }}</h2>
+        <div v-if="simExitData.fee > 0">
+            <div style="font-size: 46px; font-weight: 800; margin: 20px 0; color: #ff453a;">¥{{ simExitData.fee }}</div>
+            <div style="width: 200px; height: 200px; background: #fff; margin: 0 auto 30px; display: flex; align-items: center; justify-content: center; border-radius: 16px;">
+                <img src="/static/pay.jpg" style="width: 100%; height: 100%; border-radius: 12px;"
+                     onerror="this.style.display='none';">
+            </div>
+            <el-button type="primary" round
+                       style="width: 220px; background: #0a84ff; border: none; font-size: 16px; height: 46px;"
+                       @click="btnConfirmSimPay">支付停车费并抬杆
+            </el-button>
+        </div>
+        <div v-else>
+            <div style="font-size: 26px; color: #32d74b; font-weight: bold; margin: 30px 0;">时长较短，免费放行</div>
+            <el-button type="success" round
+                       style="width: 200px; background: #32d74b; border: none; font-size: 16px; height: 46px;"
+                       @click="simPayVisible = false; selectedExitSlot = ''; fetchData()">开启道闸
+            </el-button>
+        </div>
+    </div>
+
+    <div class="sim-qr-overlay" v-if="chargePayVisible">
+        <i class="el-icon-lightning" style="font-size: 54px; color: #32d74b; margin-bottom: 15px;"></i>
+        <h2 style="margin: 0; color: #fff; font-size: 20px;">充电电费：{{ chargeExitData.plate }}</h2>
+        <div style="font-size: 46px; font-weight: 800; margin: 20px 0; color: #32d74b;">¥{{ chargeExitData.fee }}</div>
+        <div style="width: 200px; height: 200px; background: #fff; margin: 0 auto 30px; display: flex; align-items: center; justify-content: center; border-radius: 16px;">
+            <img src="/static/pay.jpg" style="width: 100%; height: 100%; border-radius: 12px;"
+                 onerror="this.style.display='none';">
+        </div>
+        <el-button type="success" round
+                   style="width: 220px; background: #32d74b; color: #000; border: none; font-size: 16px; height: 46px;"
+                   @click="btnConfirmChargePay">结清电费
+        </el-button>
+    </div>
+    {% endraw %}
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            activeTab: 'entry',
+            freeSlots: [], occupiedSlots: [], activeChargingSlots: [],
+
+            // Tab 1
+            simPlate: '', selectedDemoSlot: '',
+
+            // Tab 2
+            selectedExitSlot: '', simDuration: 1.0,
+            simPayVisible: false, simExitData: {fee: 0, plate: '', record_id: null},
+
+            // Tab 3
+            selectedChargeSlot: '', chargeDuration: 1.0,
+            chargePayVisible: false, chargeExitData: {fee: 0, plate: '', record_id: null}
+        },
+        computed: {
+            // 过滤出具有充电功能且目前有车的泊位
+            chargeableParkedSlots() {
+                return this.occupiedSlots.filter(s => {
+                    const num = parseInt(s.slot.split('-')[1]);
+                    return num >= 3 && num <= 22; // A区为充电区
+                });
+            }
+        },
+        mounted() {
+            const str = localStorage.getItem('userInfo');
+            if (!str) window.location.href = '/';
+            this.fetchData();
+            setInterval(this.fetchData, 3000);
+        },
+        methods: {
+            logout() {
+                localStorage.removeItem('userInfo');
+                window.location.href = '/';
+            },
+
+            fetchData() {
+                axios.get('/api/admin/dashboard').then(res => {
+                    this.freeSlots = res.data.data.slots.filter(s => s.status === 0);
+                });
+                axios.get('/api/admin/records').then(res => {
+                    this.occupiedSlots = res.data.data.filter(r => r.status === '正在停车');
+                });
+                axios.get('/api/admin/charging_records').then(res => {
+                    this.activeChargingSlots = res.data.data.filter(r => r.status === '正在充电');
+                });
+            },
+
+            // --- 车辆入场逻辑 ---
+            generateRandomPlate() {
+                const provinces = "京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼";
+                const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+                const numbers = "0123456789";
+                let res = provinces[Math.floor(Math.random() * provinces.length)] + letters[Math.floor(Math.random() * letters.length)] + "·";
+                for (let i = 0; i < 5; i++) res += numbers[Math.floor(Math.random() * numbers.length)];
+                this.simPlate = res;
+            },
+            btnSimulateEntry() {
+                if (!this.simPlate || !this.selectedDemoSlot) return this.$message.warning("信息不完整");
+                axios.post('/api/simulator/entry', {
+                    slot_number: this.selectedDemoSlot,
+                    plate: this.simPlate
+                }).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success("入场成功");
+                        this.simPlate = '';
+                        this.selectedDemoSlot = '';
+                        this.fetchData();
+                    } else this.$message.error(res.data.msg);
+                });
+            },
+
+            // --- 停车逻辑 ---
+            btnSyncDuration() {
+                if (!this.selectedExitSlot) return this.$message.warning("请选择车辆");
+                axios.post('/api/simulator/sync_time', {
+                    slot_number: this.selectedExitSlot,
+                    manual_hours: this.simDuration
+                }).then(res => {
+                    if (res.data.code === 200) this.$message.success("停车时空已被篡改");
+                });
+            },
+            btnSimulateExit() {
+                if (!this.selectedExitSlot) return this.$message.warning("请选择车辆");
+                axios.post('/api/simulator/exit', {slot_number: this.selectedExitSlot}).then(res => {
+                    if (res.data.code === 200) {
+                        this.simExitData = res.data.data;
+                        this.simPayVisible = true;
+                        this.fetchData();
+                    } else this.$message.error(res.data.msg);
+                });
+            },
+            btnConfirmSimPay() {
+                axios.post('/api/user/pay', {record_id: this.simExitData.record_id}).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success("停车费结清，已抬杆");
+                        this.simPayVisible = false;
+                        this.selectedExitSlot = '';
+                        this.fetchData();
+                    }
+                });
+            },
+
+            // --- 充电逻辑 ---
+            isSlotCharging(slot_number) {
+                return this.activeChargingSlots.some(c => c.slot === slot_number);
+            },
+            btnStartCharge() {
+                axios.post('/api/simulator/start_charge', {slot_number: this.selectedChargeSlot}).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.msg);
+                        this.fetchData();
+                    } else this.$message.error(res.data.msg);
+                });
+            },
+            btnSyncChargeDuration() {
+                axios.post('/api/simulator/sync_charge_time', {
+                    slot_number: this.selectedChargeSlot,
+                    manual_hours: this.chargeDuration
+                }).then(res => {
+                    if (res.data.code === 200) this.$message.success("通电时间已篡改");
+                });
+            },
+            btnStopCharge() {
+                axios.post('/api/simulator/stop_charge', {slot_number: this.selectedChargeSlot}).then(res => {
+                    if (res.data.code === 200) {
+                        this.chargeExitData = res.data.data;
+                        this.chargePayVisible = true;
+                        this.fetchData();
+                    } else this.$message.error(res.data.msg);
+                });
+            },
+            btnConfirmChargePay() {
+                axios.post('/api/simulator/pay_charge', {record_id: this.chargeExitData.record_id}).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.msg);
+                        this.chargePayVisible = false;
+                        this.selectedChargeSlot = '';
+                        this.fetchData();
+                    }
+                });
+            }
+        }
+    });
+</script>
+</body>
+</html>

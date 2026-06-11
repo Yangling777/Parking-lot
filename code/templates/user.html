@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>停车服务</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #e5e5ea;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            display: flex;
+            justify-content: center;
+        }
+
+        .mobile-native {
+            width: 100vw;
+            min-height: 100vh;
+            background: #f2f2f7;
+            position: relative;
+            padding-bottom: 30px;
+        }
+
+        .pc-simulator {
+            width: 414px;
+            height: 850px;
+            background: #f2f2f7;
+            margin: 30px 0;
+            border-radius: 55px;
+            border: 14px solid #a6a6a8;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15), 0 0 0 3px #ffffff inset;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .pc-simulator::before {
+            content: '';
+            position: sticky;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background: #000000;
+            border-radius: 20px;
+            z-index: 1000;
+            display: block;
+            margin-bottom: 15px;
+            box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.1);
+        }
+
+        .large-title-header {
+            padding: 20px 20px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .large-title-header h1 {
+            margin: 0;
+            font-size: 34px;
+            font-weight: 700;
+            color: #000;
+            letter-spacing: 0.5px;
+        }
+
+        .logout-btn {
+            color: #0071e3;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            padding-bottom: 6px;
+            cursor: pointer;
+        }
+
+        .el-tabs__nav-scroll {
+            padding: 0 15px;
+            overflow-x: auto !important;
+            scrollbar-width: none;
+        }
+
+        .el-tabs__nav-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .el-tabs__item {
+            font-size: 15px;
+            font-weight: 500;
+            color: #8e8e93;
+            padding: 0 12px !important;
+        }
+
+        .el-tabs__item.is-active {
+            color: #000;
+            font-weight: 600;
+        }
+
+        .el-tabs__active-bar {
+            background-color: #000;
+            height: 3px;
+            border-radius: 3px;
+        }
+
+        .list-group {
+            margin: 16px 20px;
+            border-radius: 14px;
+            background: #fff;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+        }
+
+        .list-item {
+            padding: 16px 20px;
+            border-bottom: 0.5px solid #e5e5ea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .slot-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #000;
+            margin: 0 0 4px 0;
+        }
+
+        .slot-desc {
+            font-size: 13px;
+            color: #8e8e93;
+            margin-top: 4px;
+        }
+
+        .apple-btn-small {
+            background: #f2f2f7 !important;
+            color: #0071e3 !important;
+            border: none !important;
+            border-radius: 16px !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+        }
+
+        .apple-btn-main {
+            background: #0071e3 !important;
+            border: none !important;
+            border-radius: 980px !important;
+            font-weight: 500 !important;
+            width: 100%;
+            height: 48px;
+            font-size: 16px !important;
+        }
+
+        .trip-card {
+            background: #ffffff;
+            margin: 0 20px 15px;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .ai-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .zone-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 0 20px 20px;
+        }
+
+        .zone-card-item {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            transition: 0.2s;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .secondary-page-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            overflow: hidden;
+        }
+
+        .secondary-page-content {
+            background: #f2f2f7;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            max-height: 85%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .secondary-page-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            border-bottom: 1px solid #e5e5ea;
+        }
+
+        .secondary-page-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+            padding-bottom: 40px;
+        }
+
+        .qr-placeholder {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            background-color: #f5f5f7;
+            border: 2px dashed #c6c6c8;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #8e8e93;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .qr-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .popup-enter-active, .popup-leave-active {
+            transition: opacity 0.3s;
+        }
+
+        .popup-enter-active .secondary-page-content, .popup-leave-active .secondary-page-content {
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .popup-enter, .popup-leave-to {
+            opacity: 0;
+        }
+
+        .popup-enter .secondary-page-content, .popup-leave-to .secondary-page-content {
+            transform: translateY(100%);
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+
+        /* 🌟 手机端响应式适配 */
+        @media (max-width: 480px) {
+            .large-title-header h1 {
+                font-size: 28px;
+            }
+            .large-title-header {
+                padding: 16px 16px 10px;
+            }
+            .zone-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin: 0 12px 20px;
+            }
+            .zone-card-item {
+                min-height: 80px;
+                padding: 14px 10px;
+            }
+            .ai-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .trip-card {
+                margin: 0 12px 12px;
+                padding: 16px;
+            }
+            .list-group {
+                margin: 10px 12px;
+            }
+            .list-item {
+                padding: 14px 16px;
+            }
+            .el-dialog {
+                width: 92% !important;
+            }
+            .pc-simulator {
+                width: 100vw;
+                height: auto;
+                min-height: 100vh;
+                margin: 0;
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+            }
+            .pc-simulator::before {
+                display: none;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .zone-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app" :class="isMobile ? 'mobile-native' : 'pc-simulator'" v-cloak>
+    [[ ]]
+    <div class="large-title-header">
+        <h1>Hi, [[ userInfo.username ]]</h1>
+        <a @click="logout" class="logout-btn">退出</a>
+    </div>
+
+    <div style="padding: 0 20px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e5ea; margin-bottom: 15px;">
+        <span style="font-size: 14px; font-weight: 600; color: #8e8e93;">当前驾驶</span>
+        <el-select v-model="currentPlate" size="mini" style="width: 140px;" @change="handlePlateChange">
+            <el-option v-for="p in plates" :key="p" :label="p" :value="p"></el-option>
+        </el-select>
+    </div>
+
+    <div class="trip-card" v-if="currentOrder">
+        <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #1d1d1f;">🚗 当前行程</h3>
+        <div v-if="currentOrder.status === '已预约'">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 13px; color: #8e8e93;">泊位锁定：<strong style="color: #0071e3;">[[ currentOrder.slot
+                    ]]</strong></div>
+                <el-button type="danger" size="small" class="apple-btn-small" @click="cancelReserve(currentOrder.id)">取消
+                </el-button>
+            </div>
+            <!-- 🌟 倒计时显示 -->
+            <div v-if="countdownText"
+                 style="background: #fff3cd; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: #856404; text-align: center;">
+                ⏳ [[ countdownText ]]
+            </div>
+            <div v-if="currentOrder.duration_hours"
+                 style="font-size: 12px; color: #8e8e93; margin-top: 5px; text-align: center;">
+                预留时长：[[ currentOrder.duration_hours ]]小时 · 截止 [[ currentOrder.expire_time.slice(11, 16) ]]
+            </div>
+        </div>
+        <div v-else-if="currentOrder.status === '正在停车'">
+            <div style="font-size: 14px; margin-bottom: 10px;">停入：<strong style="color: #0071e3;">[[ currentOrder.slot
+                ]]</strong></div>
+            <div v-if="currentOrder.has_charging"
+                 style="background: #f5f5f7; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color:#8e8e93">🔌 [[ activeCharge ? '⚡ 充电中...' : '已连接桩' ]]</span>
+                <el-button v-if="!activeCharge" type="success" size="mini" class="apple-btn-small" @click="startCharge">
+                    开始
+                </el-button>
+                <el-button v-else type="danger" size="mini" class="apple-btn-small" @click="stopCharge">结束</el-button>
+            </div>
+        </div>
+        <div v-else-if="currentOrder.status === '待支付'"
+             style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 14px;">欠费：<strong style="color: #ff3b30;">¥[[ currentOrder.fee ]]</strong></div>
+            <el-button type="primary" size="small" class="apple-btn-main"
+                       style="width:auto; padding:0 15px; height:34px;" @click="showPayDialog">缴费
+            </el-button>
+        </div>
+    </div>
+
+    <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+        <el-tab-pane label="找车位" name="reserve">
+            <div v-if="aiRecommendedSlots.length > 0 && !currentOrder" style="margin: 0 20px 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
+                    <span style="font-weight: 600;">✨ AI 智能匹配推荐</span>
+                    <el-tag size="mini" :type="isGreenPlate() ? 'success' : 'info'" effect="dark">
+                        [[ isGreenPlate() ? '⚡ 绿牌' : '⛽ 燃油' ]]
+                    </el-tag>
+                </div>
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <div v-for="slot in aiRecommendedSlots.slice(0,3)" :key="slot.id" class="zone-card-item"
+                         @click="reserveSlot(slot.slot_number)">
+                        <b style="font-size: 18px;">[[ slot.slot_number ]]</b>
+                        <el-button type="primary" size="mini" round style="margin-top:8px; border:none;"
+                                   :style="{background: slot.has_charging ? '#34c759' : '#0071e3'}">预定
+                        </el-button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="zone-grid" v-if="!currentOrder">
+                <div class="zone-card-item phys" @click="openZoneDialog('PHYSICAL')">
+                    <div style="font-size:20px;">💻</div>
+                    <b>实体传感</b></div>
+                <div class="zone-card-item green" @click="openZoneDialog('A')">
+                    <div style="font-size:20px;">⚡</div>
+                    <b>A区充电</b></div>
+                <div class="zone-card-item normal" @click="openZoneDialog('B')"><b>B区泊位</b></div>
+                <div class="zone-card-item normal" @click="openZoneDialog('C')"><b>C区泊位</b></div>
+                <div class="zone-card-item normal" @click="openZoneDialog('D')"><b>D区泊位</b></div>
+                <div class="zone-card-item normal" @click="openZoneDialog('E')"><b>E区泊位</b></div>
+            </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="订单" name="orders">
+            <div class="list-group" style="margin-top: 0;">
+                <el-empty v-if="historyOrders.length === 0" description="无记录"></el-empty>
+                <div v-for="record in historyOrders" :key="record.id" class="list-item"
+                     style="flex-direction: column; align-items: flex-start;">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <b>[[ record.plate ]] | [[ record.slot ]]</b>
+                        <span style="font-weight: 600;">¥[[ record.fee ]]</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; width: 100%; font-size:12px; color:#8e8e93; margin-top:5px;">
+                        <span>[[ record.entry ]]入场</span>
+                        <span style="color:#34c759">[[ record.status ]]</span>
+                    </div>
+                </div>
+            </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="👤 管理" name="profile">
+            <div class="trip-card">
+                <div style="font-size: 14px; margin-bottom: 10px;">账户：<b>[[ userInfo.username ]]</b></div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>手机：<b>[[ userInfo.phone ]]</b></span>
+                    <el-button type="text" @click="openModDialog('phone')">修改</el-button>
+                </div>
+            </div>
+            <div class="trip-card" style="border: 1px solid #0071e3;">
+                <h4 style="margin:0 0 10px 0;">🚙 车库管理</h4>
+                <div v-for="(p, index) in plates" :key="index"
+                     style="display:flex; justify-content:space-between; margin-bottom:8px; padding:8px; background:#f5f5f7; border-radius:8px;">
+                    <b>[[ p ]]</b>
+                    <el-button type="text" style="color:#ff3b30; padding:0" @click="removePlate(index)">移除</el-button>
+                </div>
+                <div style="display:flex; gap:10px; margin-top: 10px;">
+                    <el-input v-model="newPlate" @input="formatNewPlate" placeholder="车牌号" size="mini"></el-input>
+                    <el-button type="primary" size="mini" @click="addPlate">添加</el-button>
+                </div>
+            </div>
+            <div class="trip-card">
+                <h4 style="margin:0 0 10px 0;">📝 审批进度</h4>
+                <div v-for="req in myModRequests" :key="req.id"
+                     style="border-bottom:1px solid #f2f2f7; padding:8px 0; font-size:12px;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>修改[[ req.mod_type ]] → <b>[[ req.new_value ]]</b></span>
+                        <span :style="{color: req.status==='待审核'?'#ff9500':(req.status==='已同意'?'#34c759':'#ff3b30')}">[[ req.status ]]</span>
+                    </div>
+                </div>
+            </div>
+        </el-tab-pane>
+    </el-tabs>
+
+    <transition name="popup">
+        <div class="secondary-page-overlay" v-if="zoneDialogVisible || modDialog.visible" @click.self="closeAllPopups">
+            <div class="secondary-page-content" v-if="zoneDialogVisible">
+                <div class="secondary-page-header">
+                    <b style="font-size: 16px;">[[ getZoneTitle(selectedZone) ]]</b>
+                    <el-button icon="el-icon-close" circle size="mini" @click="zoneDialogVisible = false"></el-button>
+                </div>
+                <div class="secondary-page-body">
+                    <div class="list-group" style="margin: 0;">
+                        <div v-for="slot in filteredFreeSlots" :key="slot.id" class="list-item">
+                            <div>
+                                <b class="slot-title">[[ slot.slot_number ]]</b>
+                                <div class="slot-desc">[[ slot.has_charging ? '新能源' : '标准' ]]位</div>
+                            </div>
+                            <el-button type="primary" class="apple-btn-small"
+                                       :disabled="slot.has_charging && !isGreenPlate()"
+                                       @click="reserveSlot(slot.slot_number)">预约
+                            </el-button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="secondary-page-content" v-if="modDialog.visible">
+                <div class="secondary-page-header">
+                    <b>申请资料变更</b>
+                    <el-button icon="el-icon-close" circle size="mini" @click="modDialog.visible = false"></el-button>
+                </div>
+                <div class="secondary-page-body">
+                    <div v-if="modDialog.type === 'phone'" style="margin-bottom: 15px;">
+                        <el-input v-model="modDialog.newValue" placeholder="新手机号" size="medium"></el-input>
+                    </div>
+                    <div v-else
+                         style="padding:10px; background:#f5f5f7; border-radius:10px; font-size:13px; margin-bottom:15px;">
+                        新车库列表：<b>[[ modDialog.newValue ]]</b>
+                    </div>
+                    <p style="font-size:14px; margin-bottom:8px;">请选择修改原因：</p>
+                    <el-select v-model="modDialog.selectedReason" placeholder="选择理由"
+                               style="width: 100%; margin-bottom:15px;">
+                        <el-option label="录入错误" value="录入错误"></el-option>
+                        <el-option label="更换新车" value="更换资料"></el-option>
+                        <el-option label="增加家庭车辆" value="增加车辆"></el-option>
+                        <el-option label="其他" value="其他"></el-option>
+                    </el-select>
+                    <el-input type="textarea" v-model="modDialog.reasonDetail" placeholder="详细说明..."
+                              :rows="2"></el-input>
+                    <el-button type="primary" class="apple-btn-main" style="margin-top:20px;" @click="submitModRequest">
+                        确认提交申请
+                    </el-button>
+                </div>
+            </div>
+        </div>
+    </transition>
+
+    <!-- 🌟 预约时长选择对话框 -->
+    <el-dialog :visible.sync="reserveDialog.visible" width="85%" top="25vh"
+               style="border-radius: 20px; text-align: center;" title="选择保留时长">
+        <div style="text-align: center; padding: 10px 0;">
+            <p style="font-size: 18px; margin: 0 0 5px 0; color: #1d1d1f;">
+                预约车位 <b style="color: #0071e3;">[[ reserveDialog.slot_number ]]</b>
+            </p>
+            <p style="font-size: 13px; color: #8e8e93; margin-bottom: 20px;">
+                最多提前3小时，超时15分钟自动取消
+            </p>
+            <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 20px;">
+                <div @click="reserveDialog.duration = 1"
+                     :style="{
+                        flex: 1, padding: '20px 10px', borderRadius: '16px', cursor: 'pointer',
+                        border: reserveDialog.duration === 1 ? '2px solid #0071e3' : '2px solid #e5e5ea',
+                        background: reserveDialog.duration === 1 ? '#e8f0fe' : '#fff',
+                        transition: '0.2s'
+                     }">
+                    <div style="font-size: 28px; font-weight: 700;">1h</div>
+                    <div style="font-size: 12px; color: #8e8e93;">预留一小时</div>
+                </div>
+                <div @click="reserveDialog.duration = 2"
+                     :style="{
+                        flex: 1, padding: '20px 10px', borderRadius: '16px', cursor: 'pointer',
+                        border: reserveDialog.duration === 2 ? '2px solid #0071e3' : '2px solid #e5e5ea',
+                        background: reserveDialog.duration === 2 ? '#e8f0fe' : '#fff',
+                        transition: '0.2s'
+                     }">
+                    <div style="font-size: 28px; font-weight: 700;">2h</div>
+                    <div style="font-size: 12px; color: #8e8e93;">预留两小时</div>
+                </div>
+            </div>
+            <el-button type="primary" class="apple-btn-main" style="width: 100%;" @click="confirmReserve">
+                确认预约 · [[ reserveDialog.duration ]]小时
+            </el-button>
+        </div>
+    </el-dialog>
+
+    <el-dialog :visible.sync="payDialogVisible" width="90%" :show-close="false" top="15vh"
+               style="border-radius: 20px; text-align: center;">
+        <h1 style="margin:0; font-size:40px;">¥[[ currentOrder ? currentOrder.fee : '0.00' ]]</h1>
+        <div style="margin:20px 0; background:#f5f5f7; padding:20px; border-radius:15px;">
+            <img src="/static/pay.jpg" style="width: 150px;" onerror="this.style.display='none'">
+        </div>
+        <el-button type="primary" class="apple-btn-main" @click="simulatePaySuccess">已完成支付</el-button>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        delimiters: ['[[', ']]'],
+        data: {
+            isMobile: false, activeTab: 'reserve',
+            userInfo: {}, freeSlots: [], myRecords: [], myChargingRecords: [],
+            payDialogVisible: false, aiRecommendedSlots: [],
+            selectedZone: '', zoneDialogVisible: false,
+            plates: [], currentPlate: '', newPlate: '',
+            pwdForm: {old: '', new: ''},
+            myModRequests: [],
+            modDialog: {visible: false, type: '', newValue: '', selectedReason: '', reasonDetail: ''},
+            // 🌟 预约时长选择对话框
+            reserveDialog: {visible: false, slot_number: '', duration: 1},
+            countdownText: ''  // 预约倒计时
+        },
+        computed: {
+            currentOrder() {
+                return this.myRecords.find(r => ['已预约', '正在停车', '待支付'].includes(r.status));
+            },
+            historyOrders() {
+                return this.myRecords.filter(r => ['已支付', '已取消'].includes(r.status));
+            },
+            activeCharge() {
+                return this.myChargingRecords.find(r => r.status === '正在充电');
+            },
+            filteredFreeSlots() {
+                if (!this.selectedZone) return [];
+                return this.freeSlots.filter(s => {
+                    const num = parseInt(s.slot_number.split('-')[1]);
+                    let zone = 'E';
+                    if (num <= 2) zone = 'PHYSICAL'; else if (num <= 22) zone = 'A'; else if (num <= 42) zone = 'B';
+                    else if (num <= 62) zone = 'C'; else if (num <= 82) zone = 'D';
+                    return zone === this.selectedZone;
+                });
+            }
+        },
+        mounted() {
+            const userStr = localStorage.getItem('userInfo');
+            if (userStr) {
+                this.userInfo = JSON.parse(userStr);
+                this.plates = this.userInfo.plate_number ? this.userInfo.plate_number.split(',') : [];
+                this.currentPlate = this.plates[0] || '';
+            } else {
+                window.location.href = '/';
+                return;
+            }
+            this.checkDevice();
+            window.addEventListener('resize', this.checkDevice);
+            this.fetchData();
+            setInterval(this.fetchData, 4000);
+            setInterval(this.updateCountdown, 1000);  // 🌟 每秒刷新预约倒计时
+        },
+        methods: {
+            // 🌟 新增：前端实时边写边加点格式化
+            formatNewPlate(val) {
+                let clean = val.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+                if (clean.length > 2) {
+                    this.newPlate = clean.slice(0, 2) + '·' + clean.slice(2).toUpperCase();
+                } else {
+                    this.newPlate = clean.toUpperCase();
+                }
+            },
+
+            closeAllPopups() {
+                this.zoneDialogVisible = false;
+                this.modDialog.visible = false;
+            },
+            handlePlateChange() {
+                this.fetchData();
+            },
+            openModDialog(type) {
+                this.modDialog = {visible: true, type: type, newValue: '', selectedReason: '', reasonDetail: ''};
+            },
+            addPlate() {
+                if (!this.newPlate) return;
+                let newArr = [...this.plates, this.newPlate];
+                this.modDialog = {
+                    visible: true,
+                    type: 'plate',
+                    newValue: newArr.join(','),
+                    selectedReason: '',
+                    reasonDetail: ''
+                };
+            },
+            removePlate(index) {
+                let newArr = [...this.plates];
+                newArr.splice(index, 1);
+                this.modDialog = {
+                    visible: true,
+                    type: 'plate',
+                    newValue: newArr.join(','),
+                    selectedReason: '',
+                    reasonDetail: ''
+                };
+            },
+            submitModRequest() {
+                if (!this.modDialog.selectedReason) return this.$message.warning("请选理由");
+                const fullReason = `[${this.modDialog.selectedReason}] ${this.modDialog.reasonDetail}`;
+                axios.post('/api/user/submit_mod_request', {
+                    user_id: this.userInfo.id,
+                    mod_type: this.modDialog.type,
+                    new_value: this.modDialog.newValue || this.userInfo.plate_number,
+                    reason: fullReason
+                }).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.msg);
+                        this.modDialog.visible = false;
+                        this.newPlate = '';
+                        this.fetchData();
+                    } else this.$message.error(res.data.msg);
+                });
+            },
+            fetchData() {
+                axios.get('/api/user/info?user_id=' + this.userInfo.id).then(res => {
+                    if (res.data.code === 200) {
+                        this.userInfo = res.data.data;
+                        localStorage.setItem('userInfo', JSON.stringify(this.userInfo));
+                        this.plates = this.userInfo.plate_number ? this.userInfo.plate_number.split(',') : [];
+                        if (!this.plates.includes(this.currentPlate)) this.currentPlate = this.plates[0] || '';
+                    }
+                });
+                axios.get('/api/user/my_mod_requests?user_id=' + this.userInfo.id).then(res => {
+                    this.myModRequests = res.data.data;
+                });
+                axios.get('/api/admin/dashboard').then(res => {
+                    this.freeSlots = res.data.data.slots.filter(s => s.status === 0);
+                    axios.get('/api/user/recommend?user_id=' + this.userInfo.id + '&plate=' + encodeURIComponent(this.currentPlate)).then(recRes => {
+                        if (recRes.data.code === 200) this.aiRecommendedSlots = this.freeSlots.filter(s => s && recRes.data.data.includes(s.slot_number));
+                    });
+                });
+                axios.get('/api/user/my_records?user_id=' + this.userInfo.id).then(res => {
+                    this.myRecords = res.data.data;
+                });
+                axios.get('/api/user/my_charging_records?user_id=' + this.userInfo.id).then(res => {
+                    this.myChargingRecords = res.data.data;
+                });
+            },
+            reserveSlot(num) {
+                // 🌟 弹出时长选择框
+                this.reserveDialog.slot_number = num;
+                this.reserveDialog.duration = 1;
+                this.reserveDialog.visible = true;
+            },
+            confirmReserve() {
+                axios.post('/api/user/reserve', {
+                    slot_number: this.reserveDialog.slot_number,
+                    user_id: this.userInfo.id,
+                    plate: this.currentPlate,
+                    duration: this.reserveDialog.duration
+                }).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.msg);
+                        this.reserveDialog.visible = false;
+                        this.zoneDialogVisible = false;
+                        this.fetchData();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+            },
+            cancelReserve(id) {
+                axios.post('/api/user/cancel_reserve', {record_id: id}).then(() => this.fetchData());
+            },
+            startCharge() {
+                axios.post('/api/user/start_charge', {user_id: this.userInfo.id}).then(() => this.fetchData());
+            },
+            stopCharge() {
+                axios.post('/api/user/stop_charge', {user_id: this.userInfo.id}).then(() => this.fetchData());
+            },
+            showPayDialog() {
+                this.payDialogVisible = true;
+            },
+            simulatePaySuccess() {
+                axios.post('/api/user/pay', {record_id: this.currentOrder.id}).then(() => {
+                    this.payDialogVisible = false;
+                    this.fetchData();
+                });
+            },
+            openZoneDialog(zone) {
+                this.selectedZone = zone;
+                this.zoneDialogVisible = true;
+            },
+            // 🌟 预约倒计时实时刷新
+            updateCountdown() {
+                const order = this.myRecords.find(r => r.status === '已预约');
+                if (!order || !order.expire_time) {
+                    this.countdownText = '';
+                    return;
+                }
+                const now = new Date();
+                const expire = new Date(order.expire_time);
+                const diff = expire - now;
+                if (diff <= 0) {
+                    this.countdownText = '⏰ 已到期，宽限15分钟...';
+                    return;
+                }
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                this.countdownText = h > 0 ? `${h}时${m}分后到期` : `${m}分${s}秒后到期`;
+            },
+            getZoneTitle(z) {
+                const m = {'PHYSICAL': '实体区', 'A': 'A区充电', 'B': 'B区', 'C': 'C区', 'D': 'D区', 'E': 'E区'};
+                return m[z];
+            },
+            isPhysicalSlot(s) {
+                return parseInt(s.split('-')[1]) <= 2;
+            },
+            isGreenPlate() {
+                let p = this.currentPlate || "";
+                return p.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '').length === 8;
+            },
+            checkDevice() {
+                this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+            },
+            handleTabClick() {
+                this.fetchData();
+            },
+            logout() {
+                localStorage.removeItem('userInfo');
+                window.location.href = '/';
+            }
+        }
+    });
+</script>
+</body>
+</html>

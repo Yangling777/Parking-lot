@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>控制台 - 智能停车场</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            padding: 0 40px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            color: #1d1d1f;
+        }
+
+        .logout-link {
+            color: #0071e3;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .container {
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .kpi-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .kpi-title {
+            font-size: 14px;
+            color: #86868b;
+            font-weight: 500;
+        }
+
+        .kpi-value {
+            font-size: 40px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin: 10px 0 0 0;
+        }
+
+        .el-table {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        .el-table th {
+            background-color: #f5f5f7 !important;
+            color: #86868b;
+            font-weight: 500;
+        }
+
+        .el-table td {
+            border-bottom: 1px solid #f2f2f7 !important;
+        }
+
+        .spot-mini {
+            aspect-ratio: 1/1.2;
+            border: 1.5px solid #d2d2d7;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .spot-mini.free {
+            background: #f5f5f7;
+            color: #86868b;
+        }
+
+        .spot-mini.occupied {
+            background: #ff3b30;
+            color: #fff;
+            border-color: #ff3b30;
+        }
+
+        .spot-mini.reserved {
+            background: #ffcc00;
+            color: #fff;
+            border-color: #ffcc00;
+        }
+
+        .spot-mini:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+
+        /* 🌟 响应式适配 */
+        @media (max-width: 768px) {
+            .header {
+                padding: 0 16px;
+                height: 56px;
+            }
+            .header h2 {
+                font-size: 16px;
+            }
+            .container {
+                padding: 16px;
+            }
+            .kpi-card {
+                padding: 16px;
+                border-radius: 14px;
+            }
+            .kpi-value {
+                font-size: 28px;
+            }
+            .kpi-title {
+                font-size: 12px;
+            }
+            /* 停车沙盘网格适配小屏 */
+            .sandbox-grid {
+                grid-template-columns: repeat(5, 1fr) !important;
+                gap: 6px !important;
+            }
+            .spot-mini {
+                aspect-ratio: 1/1;
+                font-size: 10px;
+                border-radius: 4px;
+            }
+            /* 表格横向滚动 */
+            .el-table {
+                font-size: 12px;
+            }
+            /* 表单内联项堆叠 */
+            .el-form--inline .el-form-item {
+                display: block;
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 0 12px;
+                height: 48px;
+            }
+            .header h2 {
+                font-size: 14px;
+            }
+            .container {
+                padding: 10px;
+            }
+            .kpi-card {
+                padding: 12px;
+                border-radius: 12px;
+            }
+            .kpi-value {
+                font-size: 24px;
+            }
+            .spot-mini {
+                font-size: 9px;
+            }
+            .logout-link {
+                font-size: 12px;
+            }
+            /* 沙盘按钮组换行 */
+            .sandbox-actions {
+                flex-wrap: wrap;
+                gap: 6px !important;
+            }
+            .sandbox-actions .el-button {
+                font-size: 11px;
+                padding: 7px 10px;
+            }
+            /* 图表高度适配 */
+            #predictChart {
+                height: 200px !important;
+            }
+            /* 表格自适应 */
+            .el-table {
+                font-size: 11px;
+            }
+            /* 对话框全宽 */
+            .el-dialog {
+                width: 95% !important;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app" v-cloak>
+    {% raw %}
+    <div class="header">
+        <div style="display:flex; align-items:center; gap: 15px;">
+            <h2>后台管理控制台</h2>
+            <el-tag size="small" effect="dark"
+                    :type="userRole==='admin'?'danger':(userRole==='manager'?'success':'info')">
+                当前身份: {{ userRole === 'admin' ? '开发主管' : (userRole === 'manager' ? '物业总管' : '安保人员') }}
+            </el-tag>
+        </div>
+        <a @click="logout" class="logout-link">退出登录</a>
+    </div>
+
+    <div class="container">
+        <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+            <el-tab-pane label="监控大屏" name="dashboard">
+                <el-row :gutter="24">
+                    <el-col :xs="12" :sm="12" :md="6">
+                        <div class="kpi-card">
+                            <div class="kpi-title">总车位</div>
+                            <h1 class="kpi-value">{{ dbData.total }}</h1></div>
+                    </el-col>
+                    <el-col :xs="12" :sm="12" :md="6">
+                        <div class="kpi-card">
+                            <div class="kpi-title">当前空闲</div>
+                            <h1 class="kpi-value" style="color: #34c759;">{{ dbData.free }}</h1></div>
+                    </el-col>
+                    <el-col :xs="12" :sm="12" :md="6">
+                        <div class="kpi-card">
+                            <div class="kpi-title">已被占用</div>
+                            <h1 class="kpi-value" style="color: #ff3b30;">{{ dbData.occupied }}</h1></div>
+                    </el-col>
+                    <el-col :xs="12" :sm="12" :md="6">
+                        <div class="kpi-card">
+                            <div class="kpi-title">已预约</div>
+                            <h1 class="kpi-value" style="color: #ffcc00;">{{ dbData.reserved }}</h1></div>
+                    </el-col>
+                </el-row>
+
+                <el-card class="box-card" v-if="['admin', 'manager'].includes(userRole)"
+                         style="margin-top: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
+                    <div slot="header"><span style="font-weight: 600;">📈 拥堵趋势预测 (AI引擎)</span></div>
+                    <div id="predictChart" style="height: 250px; width: 100%;"></div>
+                </el-card>
+
+                <el-card class="box-card" v-if="userRole === 'admin'"
+                         style="margin-top: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
+                    <div slot="header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">🚦 数字孪生：虚拟车流引擎控制</span>
+                        <el-switch v-model="simForm.is_running" active-text="启动引擎" inactive-text="暂停"
+                                   active-color="#13ce66" @change="updateSim"></el-switch>
+                    </div>
+                    <el-form :inline="true" size="small" style="margin-bottom: -15px;">
+                        <el-form-item label="生成间隔(秒)" style="width: 35%;">
+                            <el-slider v-model="simForm.range" range :min="1" :max="60" @change="updateSim"
+                                       style="width: 200px; margin-left: 10px;"></el-slider>
+                        </el-form-item>
+                        <el-form-item label="车流倾向">
+                            <el-radio-group v-model="simForm.entry_probability" @change="updateSim">
+                                <el-radio :label="0.8">繁忙</el-radio>
+                                <el-radio :label="0.5">均衡</el-radio>
+                                <el-radio :label="0.2">冷清</el-radio>
+                                <el-radio :label="0.0">自动清空</el-radio>
+                            </el-radio-group>
+                        </el-form-item>
+                    </el-form>
+                </el-card>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+                    <div style="display: flex; align-items: baseline; gap: 10px;"><h3
+                            style="margin: 0; font-size: 18px;">🗺️ 实时监控沙盘</h3></div>
+
+                    <div class="sandbox-actions" style="display: flex; gap: 12px;">
+                        <el-button type="primary" size="medium"
+                                   style="border-radius: 10px; font-weight: 600; border: none;"
+                                   v-if="['admin', 'manager', 'security'].includes(userRole)"
+                                   @click="unplatedDialogVisible=true">🚗 无牌车入场
+                        </el-button>
+                        <el-button type="success" size="medium"
+                                   style="border-radius: 10px; font-weight: 600; border: none;"
+                                   v-if="['admin', 'manager', 'security'].includes(userRole)"
+                                   @click="exitChargeDialogVisible=true">💰 手动收费出场
+                        </el-button>
+
+                        <el-button type="warning" size="medium"
+                                   style="border-radius: 10px; background: #ff9500; border: none; font-weight: 600;"
+                                   v-if="['admin', 'manager'].includes(userRole)" @click="openManualEntryDialog">🚧
+                            异常记录管控
+                        </el-button>
+                        <el-button type="danger" size="medium"
+                                   style="border-radius: 10px; font-weight: 600; border: none;"
+                                   v-if="['admin', 'manager'].includes(userRole)" @click="clearAllSlots">🚨 一键全部出库
+                        </el-button>
+                    </div>
+                </div>
+
+                <div style="background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-top: 20px;">
+                    <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px dashed #e5e5e5;">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <span style="font-weight: 600; color: #0071e3; font-size: 16px;">🔌 物理传感专区</span>
+                        </div>
+                        <div style="display: flex; gap: 15px;">
+                            <div v-for="n in 2" :key="'phys-'+n" :class="['spot-mini', getPhysicalSpotStatus(n)]"
+                                 style="width: 80px; height: 80px; font-size: 24px; border: 2px dashed #0071e3; border-radius: 12px;"
+                                 @click="openSlotDetail('A-' + String(n).padStart(3, '0'))">
+                                {{ n }}
+                            </div>
+                        </div>
+                    </div>
+                    <div v-for="zone in ['A','B','C','D','E']" :key="zone" style="margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: 600; color: #86868b; margin-right: 10px;">{{ zone }} 区</span>
+                        </div>
+                        <div class="sandbox-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px;">
+                            <div v-for="n in 20" :key="zone+'-'+n" :class="['spot-mini', getZoneSpotStatus(zone, n)]"
+                                 @click="openSlotDetail(getZoneSpotName(zone, n))">
+                                {{ getZoneSpotId(zone, n) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="账户管理" name="users" v-if="['admin', 'manager'].includes(userRole)">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <el-button type="success" size="medium" @click="showDialog()">+ 添加用户</el-button>
+                    <el-input v-model="userSearchQuery" placeholder="搜索姓名、电话或车牌..."
+                              prefix-icon="el-icon-search" clearable style="width: 300px;"></el-input>
+                </div>
+
+                <el-tabs v-model="userPrimaryTab" type="border-card"
+                         style="box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); border-radius: 8px;">
+
+                    <el-tab-pane label="👤 用户" name="user">
+                        <user-table :table-data="getFilteredUsers(['user', 'pending_user'])" :role-label="roleLabel"
+                                    @edit="showDialog" @delete="deleteUser"></user-table>
+                    </el-tab-pane>
+
+                    <el-tab-pane label="🏢 物业" name="manager">
+                        <user-table :table-data="getFilteredUsers(['manager'])" :role-label="roleLabel"
+                                    @edit="showDialog" @delete="deleteUser"></user-table>
+                    </el-tab-pane>
+
+                    <el-tab-pane label="🛡️ 安保" name="security">
+                        <user-table :table-data="getFilteredUsers(['security'])" :role-label="roleLabel"
+                                    @edit="showDialog" @delete="deleteUser"></user-table>
+                    </el-tab-pane>
+
+                    <el-tab-pane label="🛠️ 开发" name="dev">
+                        <el-tabs v-model="userDevTab" style="margin-top: -10px;">
+                            <el-tab-pane label="👨‍💻 开发管理员" name="admin">
+                                <user-table :table-data="getFilteredUsers(['admin'])" :role-label="roleLabel"
+                                            @edit="showDialog" @delete="deleteUser"></user-table>
+                            </el-tab-pane>
+                            <el-tab-pane label="🧪 测试用户" name="test_user">
+                                <user-table :table-data="getFilteredUsers(['test_user'])" :role-label="roleLabel"
+                                            @edit="showDialog" @delete="deleteUser"></user-table>
+                            </el-tab-pane>
+                            <el-tab-pane label="🤖 模拟终端" name="simulator">
+                                <user-table :table-data="getFilteredUsers(['simulator'])" :role-label="roleLabel"
+                                            @edit="showDialog" @delete="deleteUser"></user-table>
+                            </el-tab-pane>
+                        </el-tabs>
+                    </el-tab-pane>
+                </el-tabs>
+
+                <el-dialog :title="form.id ? '编辑资料' : '添加用户'" :visible.sync="dialogVisible" width="30%">
+                    <el-form :model="form" label-width="70px" style="padding-right: 20px;">
+                        <el-form-item label="姓名">
+                            <el-input v-model="form.username"></el-input>
+                        </el-form-item>
+                        <el-form-item label="手机">
+                            <el-input v-model="form.phone"></el-input>
+                        </el-form-item>
+                        <el-form-item label="车牌">
+                            <el-input v-model="form.plate"></el-input>
+                        </el-form-item>
+                        <el-form-item label="密码">
+                            <el-input v-model="form.password" placeholder="留空不改，新建默认123456"></el-input>
+                        </el-form-item>
+                        <el-form-item label="权限">
+                            <el-select v-model="form.role" style="width: 100%;">
+                                <el-option label="普通车主 (user)" value="user"></el-option>
+                                <el-option label="安保人员 (security)" value="security"></el-option>
+                                <el-option label="系统开发 (admin)" value="admin"></el-option>
+                                <el-option label="测试车主 (test_user)" value="test_user"></el-option>
+                                <el-option label="模拟终端 (simulator)" value="simulator"></el-option>
+                                <el-option label="物业总管 (manager)" value="manager"></el-option>
+                                <el-option label="待审状态 (pending)" value="pending_user"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-form>
+                    <span slot="footer">
+                        <el-button @click="dialogVisible = false">取消</el-button>
+                        <el-button type="primary" @click="saveUser">保存</el-button>
+                    </span>
+                </el-dialog>
+            </el-tab-pane>
+
+            <el-tab-pane label="停车记录" name="records">
+                <el-table :data="records">
+                    <el-table-column prop="plate" label="车牌" width="150"></el-table-column>
+                    <el-table-column prop="slot" label="泊位"></el-table-column>
+                    <el-table-column prop="entry" label="入场时间"></el-table-column>
+                    <el-table-column prop="exit" label="离场时间"></el-table-column>
+                    <el-table-column prop="status" label="状态">
+                        <template slot-scope="scope">
+                            <span :style="{color: scope.row.status.includes('结清') || scope.row.status.includes('支付') ? '#34c759' : '#ff9500'}">● {{ scope.row.status
+                                }}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="快捷操作" width="120"
+                                     v-if="['admin', 'manager', 'security'].includes(userRole)">
+                        <template slot-scope="scope">
+                            <el-button v-if="scope.row.status === '正在停车' || scope.row.status === '待支付'"
+                                       type="success" size="mini" @click="manualExit(scope.row.id)">手动放行
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-tab-pane>
+
+            <el-tab-pane label="⚡ 充电大盘" name="charging">
+                <el-table :data="chargingRecords">
+                    <el-table-column prop="plate" label="充电车辆" width="150"></el-table-column>
+                    <el-table-column prop="slot" label="泊位"></el-table-column>
+                    <el-table-column prop="start" label="开始时间"></el-table-column>
+                    <el-table-column prop="end" label="结束时间"></el-table-column>
+                    <el-table-column prop="duration" label="时长"></el-table-column>
+                    <el-table-column prop="status" label="状态"></el-table-column>
+                </el-table>
+            </el-tab-pane>
+
+            <el-tab-pane label="📩 消息通知" name="messages" v-if="['admin', 'manager'].includes(userRole)">
+                <el-table :data="modRequests" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                    <el-table-column prop="username" label="申请人" width="120"></el-table-column>
+                    <el-table-column prop="mod_type" label="类型" width="100"></el-table-column>
+                    <el-table-column prop="old_value" label="当前资料"></el-table-column>
+                    <el-table-column prop="new_value" label="期望变更"></el-table-column>
+                    <el-table-column prop="reason" label="原因"></el-table-column>
+                    <el-table-column prop="status" label="状态"></el-table-column>
+                    <el-table-column label="审批" width="160">
+                        <template slot-scope="scope">
+                            <el-button v-if="scope.row.status === '待审核'" type="success" size="mini"
+                                       @click="handleModReq(scope.row.id, 'approve')">同意
+                            </el-button>
+                            <el-button v-if="scope.row.status === '待审核'" type="danger" size="mini"
+                                       @click="handleModReq(scope.row.id, 'reject')">拒绝
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-tab-pane>
+        </el-tabs>
+    </div>
+
+    <el-dialog title="无牌车辆手动入场" :visible.sync="unplatedDialogVisible" width="30%" style="border-radius: 20px;"
+               @close="unplatedForm.slot=''">
+        <el-form label-width="80px">
+            <el-form-item label="分配车位">
+                <el-select v-model="unplatedForm.slot" style="width: 100%;" placeholder="请选择分配给无牌车的空闲车位">
+                    <el-option v-for="s in dbData.slots.filter(x => x.status===0)" :key="s.id" :label="s.slot_number"
+                               :value="s.slot_number"></el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div style="font-size:12px; color:#8e8e93; text-align:center;">系统将自动记录入场时间，并分配虚拟车牌标识</div>
+        <span slot="footer">
+            <el-button @click="unplatedDialogVisible=false">取消</el-button>
+            <el-button type="primary" style="background:#0071e3; border:none;"
+                       @click="submitUnplatedEntry">记录并抬杆入场</el-button>
+        </span>
+    </el-dialog>
+
+    <el-dialog title="手动扫码收费出场" :visible.sync="exitChargeDialogVisible" width="30%" style="border-radius: 20px;"
+               @close="exitChargeData=null; exitForm.slot=''">
+        <el-form label-width="80px" v-if="!exitChargeData">
+            <el-form-item label="选择车辆">
+                <el-select v-model="exitForm.slot" style="width: 100%;" placeholder="请选择准备离场的在库车辆">
+                    <el-option v-for="s in dbData.slots.filter(x => x.status===1)" :key="s.id" :label="s.slot_number"
+                               :value="s.slot_number"></el-option>
+                </el-select>
+            </el-form-item>
+            <div style="text-align: center; margin-top: 20px;">
+                <el-button type="primary" style="background:#ff9500; border:none; width:80%;" @click="calculateExitFee">
+                    提取账单并计算费用
+                </el-button>
+            </div>
+        </el-form>
+
+        <div v-else style="text-align: center;">
+            <h3 style="margin: 0 0 10px 0; color:#1d1d1f;">出场车辆：{{ exitChargeData.plate }}</h3>
+            <div style="color:#8e8e93; font-size:13px; margin-bottom:15px;">入场时间：{{ exitChargeData.entry_time }}
+            </div>
+
+            <h1 style="color: #ff3b30; font-size: 54px; margin: 10px 0;">¥{{ exitChargeData.fee }}</h1>
+
+            <div v-if="exitChargeData.fee > 0"
+                 style="margin: 20px auto; width: 200px; height: 200px; border: 2px dashed #d2d2d7; border-radius: 16px; padding: 10px; background:#f5f5f7;">
+                <img src="/static/pay.jpg" style="width:100%; height:100%; object-fit:cover; border-radius:10px;"
+                     onerror="this.style.display='none'">
+                <div style="font-size:12px; color:#999; margin-top:5px;">请车主出示微信扫码</div>
+            </div>
+            <div v-else style="font-size: 24px; color: #34c759; margin: 40px 0; font-weight: bold;">
+                <i class="el-icon-circle-check"></i> 时长较短，本次免费
+            </div>
+
+            <div style="margin-top: 20px; display:flex; justify-content:center; gap: 15px;">
+                <el-button @click="exitChargeData = null">返回重选</el-button>
+                <el-button type="success" style="background:#34c759; border:none;" @click="confirmManualExit">
+                    已核实收款，抬杆放行！
+                </el-button>
+            </div>
+        </div>
+    </el-dialog>
+
+    <el-dialog title="人工指派异常车位" :visible.sync="manualDialogVisible" width="30%" style="border-radius: 20px;">
+        <el-form label-width="80px">
+            <el-form-item label="空闲泊位">
+                <el-select v-model="manualForm.slot" style="width: 100%;">
+                    <el-option v-for="s in dbData.slots.filter(x => x.status===0)" :key="s.id" :label="s.slot_number"
+                               :value="s.slot_number"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="强制填入">
+                <el-input v-model="manualForm.plate"></el-input>
+            </el-form-item>
+        </el-form>
+        <span slot="footer"><el-button @click="manualDialogVisible=false">取消</el-button><el-button type="warning"
+                                                                                                     @click="submitManualEntry">确定强制入库</el-button></span>
+    </el-dialog>
+
+    <el-dialog :title="slotDetailTitle" :visible.sync="slotDetailVisible" width="65%" style="border-radius: 20px;">
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: #f5f5f7; padding: 15px; border-radius: 12px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="font-weight: 600; font-size: 14px;">筛选周期:</span>
+                <el-date-picker v-model="slotDateRange" type="daterange" range-separator="至"
+                                start-placeholder="开始日期" end-placeholder="结束日期" value-format="yyyy-MM-dd"
+                                size="small"></el-date-picker>
+                <el-button type="primary" size="small" @click="fetchSlotDetails"
+                           style="background: #0071e3; border: none; border-radius: 6px;">查询记录
+                </el-button>
+            </div>
+        </div>
+        <el-table :data="slotRecords" height="350">
+            <el-table-column prop="plate" label="停泊车辆" width="120">
+                <template slot-scope="scope"><span style="font-weight: 600;">{{ scope.row.plate }}</span></template>
+            </el-table-column>
+            <el-table-column prop="entry" label="驶入时间" width="140"></el-table-column>
+            <el-table-column prop="exit" label="驶离时间" width="140"></el-table-column>
+            <el-table-column prop="duration" label="停留时长" width="140"></el-table-column>
+            <el-table-column prop="charge_info" label="能源消耗(充电)" width="150">
+                <template slot-scope="scope">
+                    <span :style="{color: scope.row.charge_info !== '无充电记录' ? '#0071e3' : '#86868b', fontWeight: 500}">{{ scope.row.charge_info
+                        }}</span>
+                </template>
+            </el-table-column>
+            <el-table-column prop="status" label="订单状态">
+                <template slot-scope="scope">
+                    <span :style="{color: scope.row.status.includes('清空') || scope.row.status.includes('已支付') || scope.row.status.includes('结清') ? '#34c759' : '#ff9500'}">● {{ scope.row.status
+                        }}</span>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-dialog>
+    {% endraw %}
+</div>
+
+<script>
+    // 🌟 注册可复用的表格组件，使用 v-text 避开 Jinja 解析报错
+    Vue.component('user-table', {
+        props: ['tableData', 'roleLabel'],
+        template: `
+          <el-table :data="tableData">
+            <el-table-column prop="username" label="姓名" width="150"></el-table-column>
+            <el-table-column prop="phone" label="联系方式(登录号)"></el-table-column>
+            <el-table-column prop="plate" label="车牌号"></el-table-column>
+            <el-table-column label="身份">
+              <template slot-scope="scope">
+                <el-tag size="small" effect="plain"
+                        :type="scope.row.role==='admin'?'danger':(scope.row.role==='manager'?'success':'info')"
+                        v-text="roleLabel(scope.row.role)">
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180">
+              <template slot-scope="scope">
+                <el-button size="mini" type="primary" plain @click="$emit('edit', scope.row)">编辑</el-button>
+                <el-button size="mini" type="danger" plain @click="$emit('delete', scope.row.id)">移除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        `
+    });
+
+    new Vue({
+        el: '#app',
+        data: {
+            userRole: '',
+            activeTab: 'dashboard',
+            userPrimaryTab: 'user', // 🌟 新增：主标签页状态
+            userDevTab: 'admin',    // 🌟 新增：子标签页状态
+            userSearchQuery: '',    // 🌟 新增：全局搜索状态
+            dbData: {total: 0, free: 0, occupied: 0, reserved: 0, slots: []},
+            users: [], records: [], chargingRecords: [], modRequests: [],
+            dialogVisible: false, form: {}, manualDialogVisible: false, manualForm: {slot: '', plate: ''},
+            simForm: {is_running: true, range: [5, 15], entry_probability: 0.5},
+            myChart: null,
+            slotDetailVisible: false, slotDetailTitle: '', currentDetailSlot: '', slotDateRange: null, slotRecords: [],
+
+            // 无牌车和手动收费相关变量
+            unplatedDialogVisible: false, unplatedForm: {slot: ''},
+            exitChargeDialogVisible: false, exitForm: {slot: ''}, exitChargeData: null
+        },
+        mounted() {
+            const userStr = localStorage.getItem('userInfo');
+            if (userStr) {
+                this.userRole = JSON.parse(userStr).role;
+            }
+            this.fetchDashboard();
+            setTimeout(() => {
+                this.initECharts();
+            }, 500);
+            setInterval(this.fetchDashboard, 3000);
+        },
+        methods: {
+            // 🌟 核心功能：带搜索的实时角色过滤
+            getFilteredUsers(roles) {
+                const query = this.userSearchQuery.toLowerCase().trim();
+                return this.users.filter(u => {
+                    const matchRole = roles.includes(u.role);
+                    const uName = u.username || '';
+                    const uPhone = u.phone || '';
+                    const uPlate = u.plate || '';
+                    const matchSearch = !query ||
+                            uName.toLowerCase().includes(query) ||
+                            uPhone.toLowerCase().includes(query) ||
+                            uPlate.toLowerCase().includes(query);
+                    return matchRole && matchSearch;
+                });
+            },
+
+            roleLabel(role) {
+                const map = {
+                    'user': '普通车主',
+                    'security': '安保人员',
+                    'admin': '开发主管',
+                    'test_user': '测试免检',
+                    'simulator': '模拟道闸',
+                    'manager': '物业总管',
+                    'pending_user': '待审批用户'
+                };
+                return map[role] || role;
+            },
+
+            // 提交无牌车入场
+            submitUnplatedEntry() {
+                if (!this.unplatedForm.slot) return this.$message.warning("请为无牌车分配一个空闲车位");
+                axios.post('/api/admin/unplated_entry', {slot: this.unplatedForm.slot}).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success(res.data.msg);
+                        this.unplatedDialogVisible = false;
+                        this.fetchDashboard();
+                        this.fetchRecords();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+            },
+
+            // 提取账单计算费用
+            calculateExitFee() {
+                if (!this.exitForm.slot) return this.$message.warning("请选择要出场的车辆");
+                axios.post('/api/admin/pre_exit', {slot: this.exitForm.slot}).then(res => {
+                    if (res.data.code === 200) {
+                        this.exitChargeData = res.data.data;
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+            },
+
+            // 确认收费并抬杆
+            confirmManualExit() {
+                axios.post('/api/admin/manual_exit', {record_id: this.exitChargeData.record_id}).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('已确认收款，抬杆放行！');
+                        this.exitChargeDialogVisible = false;
+                        this.exitChargeData = null;
+                        this.exitForm.slot = '';
+                        this.fetchDashboard();
+                        this.fetchRecords();
+                    } else {
+                        this.$message.error(res.data.msg);
+                    }
+                });
+            },
+
+            handleModReq(req_id, action) {
+                axios.post('/api/admin/handle_mod_request', {req_id: req_id, action: action}).then(res => {
+                    if (res.data.code === 200) {
+                        this.$message.success('审批完成');
+                        this.fetchModRequests();
+                        this.fetchUsers();
+                    }
+                });
+            },
+            fetchModRequests() {
+                axios.get('/api/admin/mod_requests').then(res => {
+                    this.modRequests = res.data.data;
+                });
+            },
+
+            getPhysicalSpotStatus(id) {
+                const slot = this.dbData.slots.find(s => s.slot_number === 'A-' + String(id).padStart(3, '0'));
+                return slot ? (slot.status === 1 ? 'occupied' : (slot.status === 2 ? 'reserved' : 'free')) : 'free';
+            },
+            getZoneSpotId(zone, n) {
+                return 3 + {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4}[zone] * 20 + (n - 1);
+            },
+            getZoneSpotName(zone, n) {
+                return 'A-' + String(this.getZoneSpotId(zone, n)).padStart(3, '0');
+            },
+            getZoneSpotStatus(zone, n) {
+                const slot = this.dbData.slots.find(s => s.slot_number === this.getZoneSpotName(zone, n));
+                return slot ? (slot.status === 1 ? 'occupied' : (slot.status === 2 ? 'reserved' : 'free')) : 'free';
+            },
+
+            initECharts() {
+                if (!window.echarts || !document.getElementById('predictChart')) return;
+                this.myChart = echarts.init(document.getElementById('predictChart'));
+                this.myChart.setOption({
+                    tooltip: {trigger: 'axis'},
+                    xAxis: {type: 'category', data: ['当前', '+1h', '+2h', '+3h', '+4h', '+5h', '+6h']},
+                    yAxis: {type: 'value', max: 100},
+                    series: [{
+                        type: 'line',
+                        smooth: true,
+                        itemStyle: {color: '#0071e3'},
+                        areaStyle: {color: 'rgba(0,113,227,0.1)'},
+                        data: []
+                    }]
+                });
+            },
+            fetchDashboard() {
+                axios.get('/api/admin/dashboard').then(res => {
+                    this.dbData = res.data.data;
+                    if (this.myChart && this.dbData.predict_trend) this.myChart.setOption({series: [{data: this.dbData.predict_trend}]});
+                });
+            },
+            logout() {
+                localStorage.removeItem('userInfo');
+                window.location.href = '/';
+            },
+            handleTabClick(tab) {
+                if (tab.name === 'users') this.fetchUsers();
+                if (tab.name === 'records') this.fetchRecords();
+                if (tab.name === 'charging') this.fetchChargingRecords();
+                if (tab.name === 'messages') this.fetchModRequests();
+            },
+            fetchUsers() {
+                axios.get('/api/admin/users').then(res => this.users = res.data.data);
+            },
+            fetchRecords() {
+                axios.get('/api/admin/records').then(res => this.records = res.data.data);
+            },
+            fetchChargingRecords() {
+                axios.get('/api/admin/charging_records').then(res => this.chargingRecords = res.data.data);
+            },
+            updateSim() {
+                axios.post('/api/admin/update_simulation', {
+                    is_running: this.simForm.is_running,
+                    min_interval: this.simForm.range[0],
+                    max_interval: this.simForm.range[1],
+                    entry_probability: this.simForm.entry_probability
+                });
+            },
+            clearAllSlots() {
+                this.$confirm('确定清空所有车辆放行?', '警告', {type: 'error'}).then(() => {
+                    axios.post('/api/admin/clear_all').then(res => {
+                        this.$message.success('已清空');
+                        this.fetchDashboard();
+                        this.fetchRecords();
+                    });
+                });
+            },
+            showDialog(row) {
+                this.form = row ? Object.assign({password: ''}, row) : {
+                    username: '',
+                    phone: '',
+                    plate: '',
+                    password: '',
+                    role: 'user'
+                };
+                this.dialogVisible = true;
+            },
+            saveUser() {
+                axios.post('/api/admin/user/update', this.form).then(res => {
+                    this.dialogVisible = false;
+                    this.fetchUsers();
+                });
+            },
+            deleteUser(id) {
+                axios.post('/api/admin/user/delete', {id: id}).then(res => this.fetchUsers());
+            },
+            openManualEntryDialog() {
+                this.manualForm = {slot: '', plate: '粤B' + Math.floor(Math.random() * 9000)};
+                this.manualDialogVisible = true;
+            },
+            submitManualEntry() {
+                axios.post('/api/admin/manual_entry', this.manualForm).then(res => {
+                    this.manualDialogVisible = false;
+                    this.fetchDashboard();
+                    this.fetchRecords();
+                });
+            },
+            manualExit(record_id) {
+                axios.post('/api/admin/manual_exit', {record_id: record_id}).then(res => {
+                    this.fetchRecords();
+                    this.fetchDashboard();
+                });
+            },
+            openSlotDetail(slot_number) {
+                this.currentDetailSlot = slot_number;
+                this.slotDetailTitle = `泊位分析模型 - [${slot_number}] 的历史轨迹与能源画像`;
+                this.slotDateRange = null;
+                this.slotDetailVisible = true;
+                this.fetchSlotDetails();
+            },
+            fetchSlotDetails() {
+                axios.post('/api/admin/slot_details', {
+                    slot_number: this.currentDetailSlot,
+                    date_range: this.slotDateRange
+                }).then(res => {
+                    if (res.data.code === 200) {
+                        this.slotRecords = res.data.data;
+                    } else {
+                        this.$message.error("获取车位信息失败");
+                    }
+                });
+            }
+        }
+    });
+</script>
+</body>
+</html>
