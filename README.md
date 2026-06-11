@@ -44,7 +44,7 @@ flowchart LR
 ### 核心功能
 
 | 模块 | 功能 |
-|:---:|---|
+|:---:|:---:|
 | 车牌识别 | YOLOv8n 车辆检测 → PaddleOCR 字符识别，边缘置信度 ≥ 0.85 直接使用，< 0.85 云端兜底 |
 | 车位管理 | STM32 超声波实时监测 102 个车位，毫秒级状态上报 |
 | 智能推荐 | 协同过滤算法，结合用户历史偏好 + 新能源绿牌专属充电区推荐 |
@@ -54,10 +54,18 @@ flowchart LR
 
 ---
 
+## 演示视频
+
+🎬 **[点击观看系统演示](media/demo.mp4)**（9.3 MB，右键另存或直接点击播放）
+
+> 视频展示了车牌识别、车位管理、闸机控制、计费结算等核心功能全流程
+
+---
+
 ## 技术栈
 
 | 层级 | 技术 | 版本 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | 后端 | Flask + SQLAlchemy | 3.1 / 3.1 |
 | 认证 | JWT HS256 (access 2h + refresh 7d) | — |
 | 实时通信 | flask-socketio (WebSocket) | 5.6 |
@@ -102,7 +110,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 "code.app:create_app()"
 ### 访问地址
 
 | 页面 | 地址 | 说明 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | 登录页 | http://localhost:5000 | 用户登录 / 注册 |
 | 用户端 | http://localhost:5000/user | 车位推荐、预约、支付、充电 |
 | 管理端 | http://localhost:5000/admin | 仪表盘、审批、计费规则、硬件管理 |
@@ -111,7 +119,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 "code.app:create_app()"
 ### 测试账号
 
 | 角色 | 账号 | 密码 | 说明 |
-|:---:|---|---|---|
+|:---:|:---:|:---:|:---:|
 | 普通用户 | `13800138000` | `123456` | 车牌：京A·88888 |
 | 管理员 | `admin` | `admin` | 最高权限 |
 | 安保人员 | `anbao` | `anbao` | 只读大盘 |
@@ -173,7 +181,7 @@ Parking-lot/
 ### 认证 `/api/auth/`
 
 | 方法 | 路径 | 说明 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | `POST` | `/api/auth/login` | JWT 登录 → access + refresh token |
 | `POST` | `/api/auth/register` | 用户注册（待管理员审批） |
 | `POST` | `/api/auth/refresh` | 刷新令牌（旧 token 加入黑名单） |
@@ -182,7 +190,7 @@ Parking-lot/
 ### 用户 `/api/user/`
 
 | 方法 | 路径 | 说明 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | `GET` | `/api/user/info` | 获取个人信息 |
 | `POST` | `/api/user/login` | 手机号登录（兼容旧版） |
 | `GET` | `/api/user/recommend` | AI 推荐车位（协同过滤） |
@@ -199,7 +207,7 @@ Parking-lot/
 ### 管理 `/api/admin/`
 
 | 方法 | 路径 | 说明 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | `GET` | `/api/admin/dashboard` | 仪表盘（车位 / 营收 / 趋势） |
 | `GET` | `/api/admin/users` | 用户列表 |
 | `POST` | `/api/admin/user/update` | 创建 / 更新用户 |
@@ -219,7 +227,7 @@ Parking-lot/
 ### 硬件 `/api/hardware/`
 
 | 方法 | 路径 | 说明 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | `POST` | `/api/hardware/edge/upload` | Pi5 / K210 上传识别结果 |
 | `GET` | `/api/hardware/edge/config` | 边缘节点拉取配置 |
 | `POST` | `/api/hardware/heartbeat` | 设备心跳保活 |
@@ -235,7 +243,7 @@ Parking-lot/
 ### 系统 `/api/system/`
 
 | 方法 | 路径 | 说明 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | `GET` | `/api/system/status` | 系统状态（占用率等） |
 | `GET` | `/api/system/logs` | 实时系统日志 |
 
@@ -244,7 +252,7 @@ Parking-lot/
 ## 计费规则
 
 | 时段 | 费率 | 封顶 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | 白天 8:00 – 20:00 | ¥5 / 小时 | ¥50 / 天 |
 | 夜间 20:00 – 8:00 | ¥3 / 小时 | ¥20 / 夜 |
 | 入场 30 分钟内 | **免费** | — |
@@ -259,7 +267,7 @@ Parking-lot/
 详见 [hardware/README.md](hardware/README.md)
 
 | 设备 | 连接 | 功能 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | Pi 5 CSI Camera | GPIO CSI | 车辆抓拍 |
 | Pi 5 继电器 | GPIO 22 | 闸机抬杆 |
 | Pi 5 LED | GPIO 17 / 27 | 通行指示（绿 / 红） |
@@ -309,7 +317,7 @@ curl -X POST http://localhost:5000/api/auth/refresh \
 ### 令牌机制
 
 | 类型 | 有效期 | 用途 |
-|:---:|:---:|---|
+|:---:|:---:|:---:|
 | `access_token` | 2 小时 | 访问所有受保护 API |
 | `refresh_token` | 7 天 | 换取新的 access_token（一次性，刷新后旧 token 作废） |
 | 黑名单 | 内存 | logout / refresh 时加入，立即失效 |
@@ -334,7 +342,7 @@ python setup.py --check
 ### 环境变量
 
 | 变量 | 默认值 | 说明 |
-|:---:|---|---|
+|:---:|:---:|:---:|
 | `JWT_SECRET` | 内置 | JWT 签名密钥（生产环境务必覆盖） |
 | `SECRET_KEY` | 内置 | Flask Session 密钥 |
 | `ENABLE_SOCKETIO` | `0` | 设为 `1` 启用 WebSocket 实时推送 |
