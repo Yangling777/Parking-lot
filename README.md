@@ -56,11 +56,8 @@ flowchart LR
 
 ## 演示视频
 
-<p align="center">
-  <img src="media/demo.gif" width="80%" alt="系统演示">
-</p>
-
-> 视频展示了车牌识别、车位管理、闸机控制、计费结算等核心功能全流程
+<video src="https://raw.githubusercontent.com/Yangling777/Parking-lot/master/media/demo.mp4" controls width="90%" poster="media/demo.gif">
+</video>
 
 ---
 
