@@ -1,0 +1,90 @@
+#include <Arduino.h>
+
+// 🌟 你的道闸舵机引脚
+#define SERVO_PIN 10     
+
+// 记录当前角度，用于平滑过渡
+int current_servo_angle = 180; 
+
+// 核心：丝滑调速舵机函数
+void set_servo_angle(int target_angle, int speed_delay) {
+    // 限制角度，防止机械卡死烧毁
+    target_angle = constrain(target_angle, 0, 180);
+    
+    if (speed_delay <= 0) {
+        // 如果延迟为 0，瞬间打到目标角度
+        int duty = map(target_angle, 0, 180, 205, 1024);
+        ledcWrite(SERVO_PIN, duty); 
+        current_servo_angle = target_angle;
+        return;
+    }
+
+    // 逐度扫描，实现平滑慢动作
+    if (current_servo_angle < target_angle) {
+        for (int a = current_servo_angle; a <= target_angle; a++) {
+            int duty = map(a, 0, 180, 205, 1024);
+            ledcWrite(SERVO_PIN, duty);
+            delay(speed_delay); // 控制速度的关键
+        }
+    } else {
+        for (int a = current_servo_angle; a >= target_angle; a--) {
+            int duty = map(a, 0, 180, 205, 1024);
+            ledcWrite(SERVO_PIN, duty);
+            delay(speed_delay);
+        }
+    }
+    current_servo_angle = target_angle;
+}
+
+void setup() {
+    Serial.begin(115200); 
+    delay(1000);
+
+    // 初始化舵机的 PWM 输出 (ESP32-S3 API)
+    ledcAttach(SERVO_PIN, 50, 13); 
+    
+    // 上电默认回到 180 度 (关闸状态)，速度为 0 (瞬间到位)
+    set_servo_angle(180, 0); 
+    
+    Serial.println("\n========================================");
+    Serial.println("🚀 智能道闸 - 舵机平滑调速测试工具");
+    Serial.println("========================================");
+    Serial.println("👉 请在上方输入框输入格式： 角度,延迟");
+    Serial.println("   例如输入： 90,5  (表示转到90度，每度延时5ms)");
+    Serial.println("   例如输入： 180,15 (表示退回180度，每度延时15ms)");
+    Serial.println("   (如果不输入延迟，直接输入 90，则默认延迟为 5ms)");
+    Serial.println("========================================\n");
+}
+
+void loop() {
+    // 监听串口是否有数据输入
+    if (Serial.available() > 0) {
+        String input = Serial.readStringUntil('\n');
+        input.trim(); // 去除多余的空格或回车
+
+        if (input.length() > 0) {
+            int comma_index = input.indexOf(',');
+            int target_angle = 90;
+            int speed_delay = 5; // 默认 5 毫秒
+
+            // 解析逗号前后的数字
+            if (comma_index > 0) {
+                target_angle = input.substring(0, comma_index).toInt();
+                speed_delay = input.substring(comma_index + 1).toInt();
+            } else {
+                target_angle = input.toInt();
+            }
+
+            Serial.print("🎯 正在执行 -> 目标角度: ");
+            Serial.print(target_angle);
+            Serial.print("° | 🐌 每度延迟: ");
+            Serial.print(speed_delay);
+            Serial.println("ms");
+
+            // 执行转动
+            set_servo_angle(target_angle, speed_delay);
+            
+            Serial.println("✅ 执行完毕！\n");
+        }
+    }
+}

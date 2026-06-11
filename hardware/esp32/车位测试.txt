@@ -1,0 +1,91 @@
+#include <Arduino.h>
+
+// ================== 引脚定义 ==================
+#define P1_TRIG_PIN 4
+#define P1_ECHO_PIN 5
+
+#define P2_TRIG_PIN 6
+#define P2_ECHO_PIN 7
+
+// ================== 参数设置 ==================
+#define THRESHOLD_CM 10.0  // 判断有车的阈值：10厘米
+
+// 测量距离的辅助函数
+float get_distance(int trig, int echo) {
+    // 产生一个 10us 的高电平脉冲触发超声波模块
+    digitalWrite(trig, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trig, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trig, LOW);
+    
+    // 读取返回的脉冲宽度，超时设置为 20000 微秒 (约 3.4 米)
+    float duration = pulseIn(echo, HIGH, 20000);
+    
+    // 计算距离 (声速 340m/s，所以除以 2 再乘 0.034)
+    float dist = duration * 0.034 / 2;
+    return dist;
+}
+
+void setup() {
+    // 启动串口，波特率设置为 115200
+    Serial.begin(115200); 
+    delay(1000);
+
+    // 初始化引脚模式
+    pinMode(P1_TRIG_PIN, OUTPUT);
+    pinMode(P1_ECHO_PIN, INPUT);
+    
+    pinMode(P2_TRIG_PIN, OUTPUT);
+    pinMode(P2_ECHO_PIN, INPUT);
+
+    Serial.println("\n========================================");
+    Serial.println("🚗 智能车位超声波传感器 - 独立测试工具");
+    Serial.println("========================================");
+}
+
+void loop() {
+    // 1. 读取车位1的距离
+    float d1 = get_distance(P1_TRIG_PIN, P1_ECHO_PIN);
+    
+    // 稍微延时 50 毫秒，防止两个超声波模块发出的声波互相干扰
+    delay(50); 
+    
+    // 2. 读取车位2的距离
+    float d2 = get_distance(P2_TRIG_PIN, P2_ECHO_PIN);
+
+    // ================== 打印车位 1 状态 ==================
+    Serial.print("车位1距离: ");
+    if (d1 > 0) {
+        Serial.print(d1); 
+        Serial.print(" cm");
+    } else {
+        Serial.print("超时/无物体");
+    }
+    
+    Serial.print(" \t状态: ");
+    if (d1 > 0.1 && d1 <= THRESHOLD_CM) {
+        Serial.print("🛑 有车");
+    } else {
+        Serial.print("✅ 空闲");
+    }
+
+    // ================== 打印车位 2 状态 ==================
+    Serial.print("  ||  车位2距离: ");
+    if (d2 > 0) {
+        Serial.print(d2); 
+        Serial.print(" cm");
+    } else {
+        Serial.print("超时/无物体");
+    }
+    
+    Serial.print(" \t状态: ");
+    if (d2 > 0.1 && d2 <= THRESHOLD_CM) {
+        Serial.println("🛑 有车");
+    } else {
+        Serial.println("✅ 空闲");
+    }
+
+    // 每隔 1 秒测一次
+    delay(1000); 
+}
