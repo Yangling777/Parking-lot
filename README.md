@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Smart Parking Lot</h1>
+  <h1 align="center">Smart Parking Lot（软硬件结合 树莓派pi5 esp32 stm32）</h1>
   <p align="center"><strong>智能停车场管理系统</strong> — 边缘AI + 物联网 + 云服务</p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.13+-blue?logo=python" alt="Python">
