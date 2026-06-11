@@ -57,11 +57,7 @@ flowchart LR
 
 ## 演示视频
 
-<p align="center">
-  <img src="media/demo.gif" width="85%">
-  <br>
-  <a href="media/demo.mp4">下载完整视频 (9.3 MB)</a>
-</p>
+https://github.com/user-attachments/assets/2877499e-d197-4e0b-80ea-34c265f1a3d3
 
 ---
 
