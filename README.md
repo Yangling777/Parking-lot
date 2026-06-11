@@ -113,8 +113,8 @@ car/
 
 ```bash
 # 克隆项目
-git clone <repo-url>
-cd car
+git clone https://github.com/Yangling777/Parking-lot.git
+cd Parking-lot
 
 # 一键配置环境
 python setup.py
