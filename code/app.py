@@ -1,10 +1,13 @@
 import os
+import sys
 import threading
 import time
 import random
 import re
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from extensions import db, sim_config, calculate_parking_fee, calculate_parking_fee_simple, \
     add_log, system_logs, decode_jwt_token
