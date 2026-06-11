@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Smart Parking Lot（软硬件结合 树莓派pi5 esp32 stm32）</h1>
+  <h1 align="center">Smart Parking Lot智能停车场系统（软硬件结合 树莓派pi5 esp32 stm32）</h1>
   <p align="center"><strong>智能停车场管理系统</strong> — 边缘AI + 物联网 + 云服务</p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.13+-blue?logo=python" alt="Python">
@@ -342,6 +342,9 @@ python setup.py --check
 | `TENCENT_SECRET_KEY` | `YOUR_...` | 腾讯云 OCR SecretKey |
 
 ---
+
+## 补充说明
+部分硬件功能未完善和验证，可自行更改
 
 ## License
 
