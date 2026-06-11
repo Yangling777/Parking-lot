@@ -1,6 +1,6 @@
 <p align="center">
-  <h1 align="center">Smart Parking Lot</h1>
-  <p align="center"><strong>智能停车场管理系统</strong> — 边缘AI + 物联网 + 云服务</p>
+  <h1 align="center">Smart Parking Lot — 智能停车场系统</h1>
+  <p align="center"><strong>树莓派 Pi 5 + ESP32 + STM32 软硬件全栈方案</strong> — 边缘AI · 物联网 · 云服务</p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.13+-blue?logo=python">
     <img src="https://img.shields.io/badge/Flask-3.1-black?logo=flask">
